@@ -1,5 +1,8 @@
 '''
-script to run (three) experiments for different values of beta
+Script to run (three) experiments for different values of beta
+
+Running this script will save the (new) results into outputFiles/new/
+To view the original results from the paper, see outputFiles/graph_aware/
 '''
 
 # Setup
@@ -15,7 +18,7 @@ import nci_linear_setup as ncls
 import nci_polynomial_setup as ncps
 
 path_to_module = 'Code-for-Experiments/'
-save_path = 'outputFiles/graph_aware/'
+save_path = 'outputFiles/new/'
 save_path_graphs = 'graphs/'
 
 def main(argv):

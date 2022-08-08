@@ -1,6 +1,5 @@
 '''
-Script to plot results from ratio-bern-quadratic experiment
-(varying ratio btw indirect/direct effects; bernoulli RD; quadratic model)
+Plot relative bias and experimental standard deviation
 '''
 
 # Setup
@@ -8,18 +7,19 @@ from matplotlib import rcParams
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
-import importlib
-import nbformat
 
+# Run with these settings to reproduce the MSE plots from the origianl paper
 load_path = 'outputFiles/graph_aware/'
 save_path = 'outputFiles/graph_aware/'
+
+# Run with these settings to produce MSE plots from new data
+#load_path = 'outputFiles/new/'
+#save_path = 'outputFiles/new/'
 
 def main():    
     x_label = ['ratio', 'tp', 'size']
     x_var = ['ratio', 'p', 'n']
     x_plot = ['$r$', '$p$', '$n$']
-    # graph_list = ["CON-prev","CON","er","sw-ring","SBM"]
-    # for graph in graph_list:
     graph = "er"
     for beta in [1,2]:
         if graph == "sw":
@@ -38,7 +38,8 @@ def plot(graph,x_var,x_label,model,x_plot,title,est_names,permute=False):
 
     # Create and save plots
     df = pd.read_csv(load_path+graph+experiment+'-graph_aware.csv')
-    df = df.assign(Estimator = lambda df: df.Estimator.replace({'Graph-Aware':est_names[0], 'LeastSqs-Prop':est_names[3],'LeastSqs-Num':est_names[4],'Diff-Means-Stnd': est_names[1], 'Diff-Means-Frac-0.75':est_names[2]}))
+    if load_path == 'outputFiles/graph_aware/':
+        df = df.assign(Estimator = lambda df: df.Estimator.replace({'Graph-Aware':est_names[0], 'LeastSqs-Prop':est_names[3],'LeastSqs-Num':est_names[4],'Diff-Means-Stnd': est_names[1], 'Diff-Means-Frac-0.75':est_names[2]}))
         
     plt.rc('text', usetex=True)
     
