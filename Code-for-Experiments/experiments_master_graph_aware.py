@@ -1,10 +1,9 @@
 '''
-Experiments: polynomial setting
+script to run (three) experiments for different values of beta
 '''
 
 # Setup
 import numpy as np
-import random
 import networkx as nx
 from math import log, ceil
 import pandas as pd
@@ -16,7 +15,6 @@ import nci_linear_setup as ncls
 import nci_polynomial_setup as ncps
 
 path_to_module = 'Code-for-Experiments/'
-#sys.path.append(path_to_module)
 save_path = 'outputFiles/graph_aware/'
 save_path_graphs = 'graphs/'
 
@@ -29,13 +27,9 @@ def main(argv):
     G = 10          # number of graphs we want to average over
     T = 500          # number of trials per graph
 
-    # graph_list = ["CON-prev","CON","er","sw-ring","SBM"]
-
-    # for graphStr in graph_list:
-
     graphStr = "er"
 
-    if graphStr = "sw":
+    if graphStr == "sw":
         loadGraphs = True
     else:
         loadGraphs = False
@@ -46,18 +40,17 @@ def main(argv):
         startTime1 = time.time()
 
         ###########################################
-        # Run Experiment: Varying Size of Network
+        # Run Experiment 1: Varying Size of Network
         ###########################################
-        diag = 10        # controls magnitude of direct effects
-        r = 2        # ratio between indirect and direct effects
-        p = 0.2        # treatment probability
+        diag = 10       # controls magnitude of direct effects
+        r = 2           # ratio between indirect and direct effects
+        p = 0.2         # treatment probability
 
         results = []
         if graphStr == "sw":
             sizes = np.array([16, 24, 32, 48, 64, 96])
         else:
-            sizes = np.array([ 5000, 10000, 15000, 20000, 25000])
-            # sizes = np.array([10000, 15000, 20000, 30000, 40000])
+            sizes = np.array([5000, 10000, 15000, 20000, 25000])
 
         for n in sizes:
             print("n = {}".format(n))
@@ -82,9 +75,9 @@ def main(argv):
         if graphStr == "sw":
             n = 96
         else:
-            n = 15000        # number of nodes in network
-        diag = 10     # maximum norm of direct effect
-        r = 2        # ratio between indirect and direct effects
+            n = 15000   # number of nodes in network
+        diag = 10       # maximum norm of direct effect
+        r = 2           # ratio between indirect and direct effects
 
         results = []
         p_treatments = np.array([0.03, 0.06, 0.09, 0.12, 0.15, 0.20, 0.25, 0.30, 0.40, 0.50]) # treatment probabilities
@@ -112,9 +105,9 @@ def main(argv):
         if graphStr == "sw":
             n = 96
         else:
-            n = 15000        # number of nodes in network
-        p = 0.2    # treatment probability
-        diag = 10   # maximum norm of direct effect
+            n = 15000       # number of nodes in network
+        p = 0.2             # treatment probability
+        diag = 10           # maximum norm of direct effect
 
         results = []
         ratio = [0.01, 0.1, 0.25,0.5,0.75,1,1/0.75,1/0.5,3,1/0.25]
@@ -184,10 +177,6 @@ def run_experiment(G,T,n,p,r,graphStr,diag=1,beta=2,loadGraphs=False):
     
         alpha = rand_wts[:,0].flatten()
         C = ncls.simpleWeights(A, diag, offdiag, rand_wts[:,1].flatten(), rand_wts[:,2].flatten())
-
-        # C = ncls.weights_node_deg_unif(A)
-        # C = C*A
-        # C = ncls.normalized_weights(C, diag=10, offdiag=20)
         
         # potential outcomes model
         if beta == 1:
@@ -214,7 +203,7 @@ def run_experiment(G,T,n,p,r,graphStr,diag=1,beta=2,loadGraphs=False):
             estimators.append(lambda y,z: ncps.poly_regression_prop(beta, y, A, z))
             estimators.append(lambda y,z: ncps.poly_regression_num(beta, y, A, z))
 
-        alg_names = ['Graph-Aware', 'Diff-Means-Stnd', 'Diff-Means-Frac-0.75', 'LeastSqs-Prop', 'LeastSqs-Num']
+        alg_names = ['SNIPE('+str(beta)+')', 'DM', 'DM(0.75)', 'LS-Prop', 'LS-Num']
 
         for i in range(T):
             dict_base.update({'rep':i, 'Rand': 'Bernoulli'})
