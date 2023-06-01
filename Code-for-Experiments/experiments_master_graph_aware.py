@@ -7,10 +7,7 @@ To view the original results from the paper, see outputFiles/graph_aware/
 
 # Setup
 import numpy as np
-import networkx as nx
-from math import log, ceil
 import pandas as pd
-import seaborn as sns
 import sys
 import time
 import scipy.sparse
