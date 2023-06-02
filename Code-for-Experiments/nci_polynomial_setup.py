@@ -50,138 +50,33 @@ def ppom(beta, C, alpha):
           print("ERROR: invalid degree")
       return lambda z: f(alpha, C.dot(z), g(z)) 
 
-def staggered_rollout_bern(n, P):
+SNIPE_beta = lambda n,y,w : np.sum(y*w)/n 
+
+def SNIPE_weights(n, p, A, z, beta):
   '''
-  Returns Treatment Samples from Bernoulli Staggered Rollout
+  Compute the weights w_i(z) for each population unit
 
-  beta (int): degree of potential outcomes model
-  n (int): size of population
-  P (numpy array): treatment probabilities for each time step
+  n (int): population size
+  p (float): treatment probability
+  A (scipy csr array): adjacency matrix in scipy csr format
+  z (numpy array): treatment vector
+  beta (int): degree of the potential outcomes model
+
+  Returns a numpy array W where the i-th entry is the weight w_i(z) associated to unit i
   '''
+  treated_neighb = A.dot(z)
+  control_neighb = A.dot(1-z)
+  W = np.zeros(n)
+  for i in range(n):
+    w = 0
+    a_lim = min(beta,int(treated_neighb[i]))
+    for a in range(a_lim+1):
+      b_lim = min(beta - a,int(control_neighb[i]))
+      for b in range(b_lim+1):
+        w = w + ((1-p)**(a+b) - (-p)**(a+b)) * p**(-a) * (p-1)**(-b) * special.binom(treated_neighb[i],a)  * special.binom(control_neighb[i],b)
+    W[i] = w
 
-  ### Initialize ###
-  Z = np.zeros(shape=(P.size,n))   # for each treatment sample z_t
-  U = np.random.rand(n)
-
-  ### staggered rollout experiment ###
-  for t in range(P.size):
-    ## sample treatment vector ##
-    Z[t,:] = (U < P[t])+0
-
-  return Z
-
-def bern_coeffs(P):
-  '''
-  Returns Coefficients h_t from Bernoulli Staggered Rollout
-
-  P (numpy array): treatment probabilities for each time step
-  '''
-
-  ### Initialize ###
-  H = np.zeros(P.size)
-
-  ### Coefficients ###
-  for t in range(P.size):
-    one_minusP = 1 - P            # [1-p0, 1-p1, ... , 1-p_beta]
-    pt_minusP = P[t] - P          # [pt-p0, pt-p1, ... , pt-p_beta]
-    minusP = -1*P                 # [-p0, -p1, ... , -p_beta]
-    one_minusP[t] = 1; pt_minusP[t] = 1; minusP[t] = 1
-    fraction1 = one_minusP/pt_minusP
-    fraction2 = minusP/pt_minusP
-    H[t] = np.prod(fraction1) - np.prod(fraction2)
-
-  return H
-
-def seq_treatment_probs(M, p):
-  '''
-  Returns sequence of treatment probabilities for Bernoulli staggered rollout
-
-  M (int): fineness of measurements in staggered rollout (# timesteps - 1, not counting the time zero)
-  p (float): treatment budget e.g. if you can treat 5% of population, p = 0.05
-  '''
-  fun = lambda i: (i)*p/(M)
-  P = np.fromfunction(fun, shape=(M+1,))
-  return P
-
-def seq_treated(M, p, n, K=np.array([])):
-  '''
-  Returns number of people treated by each time step with K = [k0, k1, ... , kM] via ki = i*n*p/M
-  
-  M (int): fineness of measurements in staggered rollout (# timesteps - 1, not counting the time zero)
-  p (float): treatment budget e.g. if you can treat 5% of population, p = 0.05
-  n (int): size of population
-  '''
-  if K.size == 0:
-    fun = lambda i: np.floor(p*n*i/M).astype(int)
-    K = np.fromfunction(fun, shape=(M+1,))
-  return K
-
-def staggered_rollout_complete(n, K):
-  '''
-  Returns Treatment Samples Z from Complete Staggered Rollout and number of people treated by each time step K
-
-  beta (int): degree of potential outcomes model
-  n (int): size of population
-  K (numpy array): total number of individuals treated by each timestep
-  '''
-
-  ### Initialize ###
-  Z = np.zeros(shape=(K.size,n))   # for each treatment sample, z_t
-  indices = np.random.permutation(np.arange(n))           # random permutation of the individuals
-
-  ### staggered rollout experiment ###
-  # indices: holds indices of entries equal to 0 in treatment vector
-  # to_treat: from the next set of indiv in the random permutation
-  for t in range(K.size-1):
-    to_treat = indices[K[t]:K[t+1]+1]
-    Z[t+1:,to_treat] = 1 
-
-  return Z
-
-def complete_coeffs(n, K):
-  '''
-  Returns coefficients l_t from Complete Staggered Rollout
-
-  n (int): size of population
-  K (numpy array): total number of individuals treated by each timestep
-  '''
-
-  ### Initialize ###
-  L = np.zeros(K.size)             # for the coefficients L_t
-
-  for t in range(K.size):
-    n_minusK = n - K            # [n-k0, n-k1, ... , n-k_beta]
-    kt_minusK = K[t] - K        # [kt-k0, kt-k1, ... , kt-k_beta]
-    minusK = -1*K               # [-k0, -k1, ... , -k_beta]
-    n_minusK[t] = 1; kt_minusK[t] = 1; minusK[t] = 1
-    fraction1 = n_minusK/kt_minusK
-    fraction2 = minusK/kt_minusK
-    L[t] = np.prod(fraction1) - np.prod(fraction2)
-
-  return L
-
-def outcome_sums(Y, Z):
-  '''
-  Returns the sums of the outcomes Y(z_t) for each timestep t
-
-  Y (function): potential outcomes model
-  Z (numpy array): treatment vectors z_t for each timestep t
-   - each row should correspond to a timestep, i.e. Z should be beta+1 by n
-  '''
-  sums = np.zeros(Z.shape[0]) 
-  for t in range(Z.shape[0]):
-    sums[t] = np.sum(Y(Z[t,:]))
-  return sums
-
-def graph_agnostic(n, sums, H):
-    '''
-    Returns an estimate of the TTE with (beta+1) staggered rollout design
-
-    n (int): popluation size
-    H (numpy array): PPOM coefficients h_t or l_t
-    sums (numpy array): sums of outcomes at each time step
-    '''
-    return (1/n)*H.dot(sums)
+  return W
 
 def poly_interp_splines(n, P, sums, spltyp = 'quadratic'):
   '''
@@ -330,7 +225,7 @@ def poly_regression_num_cy(beta, y, A, z):
   
   return TTE_hat
 
-def SNIPE_beta(n, p, y, A, z, beta):
+def SNIPE_beta_old(n, p, y, A, z, beta):
   # n = z.size
   # z = z.reshape((n,1))
   treated_neighb = A.dot(z)
