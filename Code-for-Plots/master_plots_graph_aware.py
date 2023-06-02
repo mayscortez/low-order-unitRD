@@ -34,12 +34,11 @@ def main():
 def plot(graph,x_var,x_label,model,x_plot,title,est_names,permute=False):
     experiment = '-'+x_label+'-'+model
     print(experiment)
-    #est_names = ['SNIPES', 'DM', 'DM($0.75$)', 'LS-Prop', 'LS-Num']
 
     # Create and save plots
     df = pd.read_csv(load_path+graph+experiment+'-SNIPE.csv')
-    if load_path == 'outputFiles/graph_aware/':
-        df = df.assign(Estimator = lambda df: df.Estimator.replace({'Graph-Aware':est_names[0], 'LeastSqs-Prop':est_names[3],'LeastSqs-Num':est_names[4],'Diff-Means-Stnd': est_names[1], 'Diff-Means-Frac-0.75':est_names[2]}))
+    #if load_path == 'outputFiles/graph_aware/':
+        #df = df.assign(Estimator = lambda df: df.Estimator.replace({'Graph-Aware':est_names[0], 'LeastSqs-Prop':est_names[3],'LeastSqs-Num':est_names[4],'Diff-Means-Stnd': est_names[1], 'Diff-Means-Frac-0.75':est_names[2]}))
         
     plt.rc('text', usetex=True)
     
@@ -47,7 +46,7 @@ def plot(graph,x_var,x_label,model,x_plot,title,est_names,permute=False):
     fig = plt.figure()
     ax = fig.add_subplot(111)
 
-    sns.lineplot(x=x_var, y='Bias', hue='Estimator', style='Estimator', data=df, ci='sd', legend='brief', markers=True)
+    sns.lineplot(x=x_var, y='Relative_Bias', hue='Estimator', style='Estimator', data=df, ci='sd', legend='brief', markers=True)
     ax.set_ylim(-1,1)
     ax.set_xlabel(x_plot, fontsize = 18)
     ax.set_ylabel("Relative Bias", fontsize = 18)
