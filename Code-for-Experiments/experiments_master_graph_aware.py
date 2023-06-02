@@ -177,6 +177,7 @@ def run_experiment(G,T,n,p,r,graphStr,diag=1,beta=2,loadGraphs=False):
     
         alpha = rand_wts[:,0].flatten()
         C = ncls.simpleWeights(A, diag, offdiag, rand_wts[:,1].flatten(), rand_wts[:,2].flatten())
+        # TODO: normalize here then absolute bias is fine
         
         # potential outcomes model
         if beta == 1:
@@ -187,6 +188,8 @@ def run_experiment(G,T,n,p,r,graphStr,diag=1,beta=2,loadGraphs=False):
         # compute and print true TTE
         TTE = 1/n * np.sum((fy(np.ones(n)) - fy(np.zeros(n))))
         # print("Ground-Truth TTE: {}".format(TTE))
+
+        # Compute (upper) variance bound
 
         ####### Estimate ########
         estimators = []
@@ -213,6 +216,10 @@ def run_experiment(G,T,n,p,r,graphStr,diag=1,beta=2,loadGraphs=False):
             for ind in range(len(estimators)):
                 est = estimators[ind](y,z)
                 dict_base.update({'Estimator': alg_names[ind], 'Bias': (est-TTE)/TTE})
+                # add absolute bias
+                # add variance estimate
+                # add ground truth TTE
+                # add number of trials somewhere
                 results.append(dict_base.copy())
 
     return results
