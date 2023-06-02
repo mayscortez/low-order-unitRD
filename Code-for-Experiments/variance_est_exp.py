@@ -1,11 +1,13 @@
 import numpy as np
 import nci_linear_setup as ncls
+import time
 
-n = 5000
+startTime = time.time()
+n = 10000
 r = 2
 diag = 1
 offdiag = r*diag
-p = 0.05
+p = 0.2
 
 # Create Weighted Adjcency matrix
 deg = 10
@@ -20,7 +22,7 @@ fy = lambda z: ncls.linear_pom(C,alpha,z)
 TTE = 1/n * np.sum((fy(np.ones(n)) - fy(np.zeros(n))))
 print("Ground-Truth TTE: {}\n".format(TTE))
 
-T = 150
+T = 200
 TTE_hat, TTE_var_hat = np.zeros(T), np.zeros(T)
 
 for i in range(T):
@@ -32,6 +34,8 @@ for i in range(T):
 
 bound = ncls.var_bound(n, p, A, C, alpha)
 
+endTime = time.time()
+
 print("SNIPE: {}".format(np.sum(TTE_hat)/T))
 print("SNIPE bias: {}\n".format(((np.sum(TTE_hat)/T) - TTE)/TTE))
 
@@ -40,3 +44,5 @@ print("MSE (Experimental Variance): {}".format(exp_var))
 print("Variance Bound: {}".format(bound))
 print("Variance Estimate: {}\n".format(np.sum(TTE_var_hat)/T))
 print("Variance Estimator bias: {}\n".format(((np.sum(TTE_var_hat)/T) - exp_var)))
+
+print("Runtime (in minutes): {}".format((endTime-startTime)/60))
