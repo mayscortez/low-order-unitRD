@@ -330,7 +330,7 @@ def poly_regression_num_cy(beta, y, A, z):
   
   return TTE_hat
 
-def graph_aware_estimator(n, p, y, A, z, beta):
+def SNIPE_beta(n, p, y, A, z, beta):
   # n = z.size
   # z = z.reshape((n,1))
   treated_neighb = A.dot(z)

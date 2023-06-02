@@ -36,7 +36,7 @@ def main(argv):
 
     for beta in [2]:
 
-        f = open(save_path+'experiments_output_deg'+str(beta)+'_graph_aware.txt', 'w')
+        f = open(save_path+'experiments_output_deg'+str(beta)+'_SNIPE.txt', 'w')
         startTime1 = time.time()
 
         ###########################################
@@ -66,7 +66,7 @@ def main(argv):
         print('Runtime (size experiment) in minutes: {}'.format(executionTime/60),file=f)  
         print('Runtime (size experiment) in minutes: {}'.format(executionTime/60))       
         df = pd.DataFrame.from_records(results)
-        df.to_csv(save_path+graphStr+'-size-deg'+str(beta)+'-graph_aware.csv')
+        df.to_csv(save_path+graphStr+'-size-deg'+str(beta)+'-SNIPE.csv')
 
         ################################################
         # Run Experiment: Varying Treatment Probability 
@@ -96,7 +96,7 @@ def main(argv):
         print('Runtime (tp experiment) in minutes: {}'.format(executionTime/60),file=f)  
         print('Runtime (tp experiment) in minutes: {}'.format(executionTime/60))           
         df = pd.DataFrame.from_records(results)
-        df.to_csv(save_path+graphStr+'-tp-deg'+str(beta)+'-graph_aware.csv')
+        df.to_csv(save_path+graphStr+'-tp-deg'+str(beta)+'-SNIPE.csv')
 
         ###########################################################
         # Run Experiment: Varying Ratio of Indirect & Direct Effects 
@@ -126,7 +126,7 @@ def main(argv):
         print('Runtime (ratio experiment) in minutes: {}'.format(executionTime/60),file=f)   
         print('Runtime (ratio experiment) in minutes: {}'.format(executionTime/60))           
         df = pd.DataFrame.from_records(results)
-        df.to_csv(save_path+graphStr+'-ratio-deg'+str(beta)+'-graph_aware.csv')
+        df.to_csv(save_path+graphStr+'-ratio-deg'+str(beta)+'-SNIPE.csv')
 
         executionTime = (time.time() - startTime1)
         print('Runtime (whole script) in minutes: {}'.format(executionTime/60),file=f)
@@ -187,39 +187,44 @@ def run_experiment(G,T,n,p,r,graphStr,diag=1,beta=2,loadGraphs=False):
 
         # compute and print true TTE
         TTE = 1/n * np.sum((fy(np.ones(n)) - fy(np.zeros(n))))
+        dict_base.update({'TTE':TTE})
         # print("Ground-Truth TTE: {}".format(TTE))
 
-        # Compute (upper) variance bound
+        # TODO: Compute (upper) variance bound
+        # bound = var_bound(n, p, A, C, alpha)
+
 
         ####### Estimate ########
         estimators = []
         if beta == 1:
-            estimators.append(lambda y,z: ncls.est_us(n, p, y, A, z))
+            estimators.append(lambda y,z: ncls.SNIPE_deg1(n, p, y, A, z))
         else:
-            estimators.append(lambda y,z: ncps.graph_aware_estimator(n, p, y, A, z, beta))
-        estimators.append(lambda y,z: ncls.diff_in_means_naive(y,z))
-        estimators.append(lambda y,z: ncls.diff_in_means_fraction(n,y,A,z,0.75))
+            estimators.append(lambda y,z: ncps.SNIPE_beta(n, p, y, A, z, beta))
         if beta == 1:
             estimators.append(lambda y,z: ncls.est_ols_gen(y,A,z))
             estimators.append(lambda y,z: ncls.est_ols_treated(y,A,z))
         else:
             estimators.append(lambda y,z: ncps.poly_regression_prop(beta, y, A, z))
             estimators.append(lambda y,z: ncps.poly_regression_num(beta, y, A, z))
+        estimators.append(lambda y,z: ncls.diff_in_means_naive(y,z))
+        estimators.append(lambda y,z: ncls.diff_in_means_fraction(n,y,A,z,0.75))
 
-        alg_names = ['SNIPE('+str(beta)+')', 'DM', 'DM(0.75)', 'LS-Prop', 'LS-Num']
+        alg_names = ['SNIPE('+str(beta)+')', 'LS-Prop', 'LS-Num', 'DM', 'DM($0.75$)']
 
         for i in range(T):
             dict_base.update({'rep':i, 'Rand': 'Bernoulli'})
             z = ncls.bernoulli(n,p)
             y = fy(z)
+            
+            var_est_snipe = ncls.var_est(n, p, y, A, z)
+            dict_base.update({'Variance_Estimate_SNIPE': var_est_snipe})
 
             for ind in range(len(estimators)):
                 est = estimators[ind](y,z)
-                dict_base.update({'Estimator': alg_names[ind], 'Bias': (est-TTE)/TTE})
-                # add absolute bias
-                # add variance estimate
-                # add ground truth TTE
-                # add number of trials somewhere
+                dict_base.update({'Estimator': alg_names[ind], 
+                                  'TTE_Estimate': est,
+                                  'Absolute_Bias': est-TTE,
+                                  'Relative_Bias': (est-TTE)/TTE})
                 results.append(dict_base.copy())
 
     return results

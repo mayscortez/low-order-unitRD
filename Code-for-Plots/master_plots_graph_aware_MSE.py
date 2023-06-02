@@ -34,7 +34,7 @@ def plot(graph,x_var,x_label,model,x_plot,title,est_names,permute=False):
     print(experiment)
 
     # Create and save plots
-    df = pd.read_csv(load_path+graph+experiment+'-graph_aware.csv')
+    df = pd.read_csv(load_path+graph+experiment+'-SNIPE.csv')
     if load_path == 'outputFiles/graph_aware/':
         df = df.assign(Estimator = lambda df: df.Estimator.replace({'Graph-Aware':est_names[0], 'LeastSqs-Prop':est_names[3],'LeastSqs-Num':est_names[4],'Diff-Means-Stnd': est_names[1], 'Diff-Means-Frac-0.75':est_names[2]}))
 
@@ -67,7 +67,7 @@ def plot(graph,x_var,x_label,model,x_plot,title,est_names,permute=False):
     else:
         ax.legend(handles=handles, labels=labels, loc='upper right', fontsize = 14)
 
-    plt.savefig(save_path+graph+experiment+'_graph_aware_MSE.pdf')
+    plt.savefig(save_path+graph+experiment+'_SNIPE_MSE.pdf')
     plt.close()
 
 if __name__ == "__main__":
