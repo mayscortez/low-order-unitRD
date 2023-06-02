@@ -215,7 +215,7 @@ def run_experiment(G,T,n,p,r,graphStr,diag=1,beta=2,loadGraphs=False):
             dict_base.update({'rep':i, 'Rand': 'Bernoulli'})
             z = ncls.bernoulli(n,p)
             y = fy(z)
-            
+
             var_est_snipe = ncls.var_est(n, p, y, A, z)
             dict_base.update({'Variance_Estimate_SNIPE': var_est_snipe})
 
@@ -224,6 +224,7 @@ def run_experiment(G,T,n,p,r,graphStr,diag=1,beta=2,loadGraphs=False):
                 dict_base.update({'Estimator': alg_names[ind], 
                                   'TTE_Estimate': est,
                                   'Absolute_Bias': est-TTE,
+                                  'Bias_squared': (est-TTE)**2,
                                   'Relative_Bias': (est-TTE)/TTE})
                 results.append(dict_base.copy())
 

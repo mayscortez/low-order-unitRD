@@ -21,36 +21,7 @@ def erdos_renyi(n,p,undirected=False):
         A = symmetrizeGraph(A)
     return scipy.sparse.csr_array(A)
 
-def config_model_nx_prev(N, t = 50000, law = "out"):
-    '''
-    Returns networkx configuration model with power law degree sequences
-    N = number of nodes
-    t = number of tries for powerlaw sequence
-    law = "out" : out-degrees distributed as powerlaw, in-degrees sum up to same # as out-degrees
-    law = "in" : in-degrees distributed as powerlaw, out-degrees sum up to same # as in-degrees
-    law = "both" : both in- and out-degrees distributed as powerlaw
-    '''
-    assert law in ["out", "in", "both"], "law must = 'out', 'in', or 'both'"
-    if law == "out":
-        deg_seq_out = nx.random_powerlaw_tree_sequence(N,tries=t)
-        deg_seq_in = constrained_sum_sample_nonneg(N,np.sum(deg_seq_out))
-    elif law == "in":
-        deg_seq_in = nx.random_powerlaw_tree_sequence(N,tries=t)
-        deg_seq_out = constrained_sum_sample_nonneg(N,np.sum(deg_seq_in))
-    else:
-        deg_seq_out = nx.random_powerlaw_tree_sequence(N,tries=t)
-        deg_seq_in = nx.random_powerlaw_tree_sequence(N,tries=t)
-
-    G = nx.generators.degree_seq.directed_configuration_model(deg_seq_in,deg_seq_out)
-
-    G.remove_edges_from(nx.selfloop_edges(G)) # remove self-loops
-    G = nx.DiGraph(G)                         # remove parallel edges
-    A = nx.to_scipy_sparse_matrix(G)                  # retrieve adjacency matrix
-    A.setdiag(np.ones(N))                    # everyone is affected by their own treatment
-
-    return A
-
-def config_model_nx(N, exp = 2.5, law = "out", unif = True):
+def config_model_nx(N, exp = 2.5, law = "out"):
     '''
     Returns the adjacency matrix A (as a numpy array) of a networkx configuration
     model with power law degree sequences
@@ -65,16 +36,10 @@ def config_model_nx(N, exp = 2.5, law = "out", unif = True):
     assert law in ["out", "in", "both"], "law must = 'out', 'in', or 'both'"
     if law == "out":
         deg_seq_out = powerlaw_degrees(N, exp)
-        if unif:
-            deg_seq_in = uniform_degrees(N,np.sum(deg_seq_out))
-        else:
-            deg_seq_in = constrained_sum_sample_nonneg(N,np.sum(deg_seq_out))
+        deg_seq_in = uniform_degrees(N,np.sum(deg_seq_out))
     elif law == "in":
         deg_seq_in = powerlaw_degrees(N, exp=2.5)
-        if unif:
-            deg_seq_out = uniform_degrees(N,np.sum(deg_seq_in))
-        else:
-            deg_seq_out = constrained_sum_sample_nonneg(N,np.sum(deg_seq_in))
+        deg_seq_out = uniform_degrees(N,np.sum(deg_seq_in))
     else:
         deg_seq_out = powerlaw_degrees(N, exp=2.5)
         #this will likely spit out error bc sum of indegrees might not be equal to sum of outdegrees
@@ -621,10 +586,103 @@ def threenet(A):
 ########################################
 
 def var_bound(n, p, A, C, alp, beta=1):
-    pass
+    '''
+    Returns the conservative upper bound on the variance of the SNIPE(beta) estimator
+
+    n (int): size of the population
+    p (float): treatment probability
+    A (scipy sparse array): adjacency matrix
+    C (scipy sparse array): weighted adjacency matrix
+    alp (numpy array): baseline effects
+    beta (int): degree of the potential outcomes model
+    '''
+    in_deg = scipy.sparse.diags(np.array(A.sum(axis=1)).flatten(),0)  # array of the in-degree of each node
+    out_deg = scipy.sparse.diags(np.array(A.sum(axis=0)).flatten(),0)  # array of the out-degree of each node
+    in_deg = in_deg.tocsr() 
+    out_deg = out_deg.tocsr() 
+
+    d_in = in_deg.max()
+    d_out = out_deg.max()
+    temp = max(4 * (beta**2), (1 / (p*(1-p))))
+
+    if beta == 1:
+        Ymax = np.amax(scipy.sparse.diags(np.array(C.sum(axis=1)).flatten(),0) + alp)
+    else:
+        Ymax = np.amax(1 + alp)
+
+    bound = (1/n) * d_in * d_out * (Ymax**2) * (np.exp(1) * d_in * temp)**beta * (1/beta)**beta
+    return bound
 
 def var_est(n, p, y, A, z):
-    pass
+    '''
+    n : int
+        size of the population
+    p : float
+        treatment probability
+    y : numpy array
+        observations
+    A : numpy array 
+        adjacency matrix where (i,j)th entry = 1 iff j's treatment affects i's outcome
+    z : numpy array
+        realized treatment assignment vector
+    '''
+    zz = z/p - (1-z)/(1-p)
+    w = A.dot(zz)
+    YW = y * w
+    YW_sq = np.square(YW)
+
+    V = np.zeros(n)
+    PY2W2 = np.zeros(n)
+    CNTS = np.zeros(n)
+
+    prob_p = np.power(np.ones(n)*p, z) 
+    prob_1_minus_p = np.power(1 - np.ones(n)*p, 1 - z)
+
+    dep_neighbors = np.dot(A,A.T)
+    
+    for i in np.arange(n):
+        Ni = np.nonzero(A[[i],:])
+        Mi = np.nonzero(dep_neighbors[[i],:]) # dependency neighbor's indices
+        Mi = Mi[1]
+
+        Pi = np.zeros(len(Mi))
+        COVi = np.zeros(len(Mi))
+        sum = 0
+        for j in np.arange(len(Mi)):
+            Nj = np.nonzero(A[[Mi[j]], :])
+            Ni_or_Nj = np.union1d(Ni,Nj)
+
+            # Compute Pi
+            mult_p = prob_p[Ni_or_Nj]
+            mult_1_minus_p = prob_1_minus_p[Ni_or_Nj]
+            Pi[j] = np.prod(mult_p) * np.prod(mult_1_minus_p)
+
+            # Compute COVi
+            Ni_and_Nj = np.intersect1d(Ni,Nj)
+            mult_p = prob_p[Ni_and_Nj]
+            mult_1_minus_p = prob_1_minus_p[Ni_and_Nj]
+            temp = np.prod(mult_p) * np.prod(mult_1_minus_p)
+            COVi[j] = Pi[j] * (1 - temp)
+
+            # Compute CNTS[i]
+            Nj_minus_Ni = np.setdiff1d(Nj,Ni)
+            sum = sum + (2**len(Nj) - 2**len(Nj_minus_Ni))
+
+
+        # Compute V
+        V[i] = np.sum(1/Pi * YW[Mi] * COVi)
+
+        # Compute PY2W2
+        mult_p = prob_p[Ni[1]]
+        mult_1_minus_p = prob_1_minus_p[Ni[1]]
+        PY2W2[i] = np.prod(mult_p) * np.prod(mult_1_minus_p) * YW_sq[i]
+
+        # Compute CNTS
+        CNTS[i] = sum
+    
+    term1 = (1/n**2) * np.dot(YW, V)
+    term2 = (1/n**2) * np.dot(PY2W2, CNTS)
+    return term1+term2
 
 ########################################
 # Estimators
