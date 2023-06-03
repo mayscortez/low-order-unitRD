@@ -15,7 +15,8 @@ import nci_linear_setup as ncls
 import nci_polynomial_setup as ncps
 
 path_to_module = 'Code-for-Experiments/'
-save_path = 'outputFiles/new/'
+#save_path = 'outputFiles/new/'
+save_path = 'outputFiles/graph_aware/'
 save_path_graphs = 'graphs/'
 
 def main(argv):
@@ -24,8 +25,8 @@ def main(argv):
     else:
         beta = 2
 
-    G = 10          # number of graphs we want to average over
-    T = 500          # number of trials per graph
+    G = 5          # number of graphs we want to average over (10)
+    T = 5          # number of trials per graph (500)
 
     graphStr = "er"
 
@@ -34,7 +35,7 @@ def main(argv):
     else:
         loadGraphs = False
 
-    for beta in [2]:
+    for beta in [1]:
 
         f = open(save_path+'experiments_output_deg'+str(beta)+'_SNIPE.txt', 'w')
         startTime1 = time.time()
@@ -190,24 +191,24 @@ def run_experiment(G,T,n,p,r,graphStr,diag=1,beta=2,loadGraphs=False):
         dict_base.update({'TTE':TTE})
         # print("Ground-Truth TTE: {}".format(TTE))
 
-        # TODO: Compute (upper) variance bound
-        # bound = var_bound(n, p, A, C, alpha)
-
+        # Compute (upper) variance bound
+        bound = ncls.var_bound(n, p, A, C, alpha, beta)
+        dict_base.update({'Variance_Bound_SNIPE':bound})
 
         ####### Estimate ########
         estimators = []
         if beta == 1:
-            estimators.append(lambda y,z: ncls.SNIPE_deg1(n, p, y, A, z))
+            estimators.append(lambda y,z,w: ncls.SNIPE_deg1(n, p, y, A, z))
         else:
-            estimators.append(lambda y,z: ncps.SNIPE_beta(n, p, y, A, z, beta))
+            estimators.append(lambda y,z,w: ncps.SNIPE_beta(n,y,w))
         if beta == 1:
-            estimators.append(lambda y,z: ncls.est_ols_gen(y,A,z))
-            estimators.append(lambda y,z: ncls.est_ols_treated(y,A,z))
+            estimators.append(lambda y,z,w: ncls.est_ols_gen(y,A,z))
+            estimators.append(lambda y,z,w: ncls.est_ols_treated(y,A,z))
         else:
-            estimators.append(lambda y,z: ncps.poly_regression_prop(beta, y, A, z))
-            estimators.append(lambda y,z: ncps.poly_regression_num(beta, y, A, z))
-        estimators.append(lambda y,z: ncls.diff_in_means_naive(y,z))
-        estimators.append(lambda y,z: ncls.diff_in_means_fraction(n,y,A,z,0.75))
+            estimators.append(lambda y,z,w: ncps.poly_regression_prop(beta, y, A, z))
+            estimators.append(lambda y,z,w: ncps.poly_regression_num(beta, y, A, z))
+        estimators.append(lambda y,z,w: ncls.diff_in_means_naive(y,z))
+        estimators.append(lambda y,z,w: ncls.diff_in_means_fraction(n,y,A,z,0.75))
 
         alg_names = ['SNIPE('+str(beta)+')', 'LS-Prop', 'LS-Num', 'DM', 'DM($0.75$)']
 
@@ -215,12 +216,17 @@ def run_experiment(G,T,n,p,r,graphStr,diag=1,beta=2,loadGraphs=False):
             dict_base.update({'rep':i, 'Rand': 'Bernoulli'})
             z = ncls.bernoulli(n,p)
             y = fy(z)
+            if beta == 1:
+                zz = z/p - (1-z)/(1-p)
+                w = A.dot(zz)
+            else:
+                w = ncps.SNIPE_weights(n, p, A, z, beta)
 
-            var_est_snipe = ncls.var_est(n, p, y, A, z)
+            var_est_snipe = ncls.var_est(n, p, y, A, z, w)
             dict_base.update({'Variance_Estimate_SNIPE': var_est_snipe})
 
             for ind in range(len(estimators)):
-                est = estimators[ind](y,z)
+                est = estimators[ind](y,z,w)
                 dict_base.update({'Estimator': alg_names[ind], 
                                   'TTE_Estimate': est,
                                   'Absolute_Bias': est-TTE,
