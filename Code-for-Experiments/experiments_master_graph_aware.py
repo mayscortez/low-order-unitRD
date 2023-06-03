@@ -25,8 +25,8 @@ def main(argv):
     else:
         beta = 2
 
-    G = 5          # number of graphs we want to average over (10)
-    T = 5          # number of trials per graph (500)
+    G = 10          # number of graphs we want to average over (10)
+    T = 100          # number of trials per graph (500)
 
     graphStr = "er"
 
