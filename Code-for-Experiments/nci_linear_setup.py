@@ -613,7 +613,7 @@ def var_bound(n, p, A, C, alp, beta=1):
     bound = (1/n) * d_in * d_out * (Ymax**2) * (np.exp(1) * d_in * temp)**beta * (1/beta)**beta
     return bound
 
-def var_est(n, p, y, A, z):
+def var_est(n, p, y, A, z, w):
     '''
     n : int
         size of the population
@@ -625,9 +625,9 @@ def var_est(n, p, y, A, z):
         adjacency matrix where (i,j)th entry = 1 iff j's treatment affects i's outcome
     z : numpy array
         realized treatment assignment vector
+    w : numpy array
+        SNIPE estimator weights w_i(z)
     '''
-    zz = z/p - (1-z)/(1-p)
-    w = A.dot(zz)
     YW = y * w
     YW_sq = np.square(YW)
 
