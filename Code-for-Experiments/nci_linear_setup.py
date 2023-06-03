@@ -613,7 +613,7 @@ def var_bound(n, p, A, C, alp, beta=1):
     bound = (1/n) * d_in * d_out * (Ymax**2) * (np.exp(1) * d_in * temp)**beta * (1/beta)**beta
     return bound
 
-def var_est(n, p, y, A, z, w):
+def var_est(n, p, y, A, z):
     '''
     n : int
         size of the population
@@ -621,13 +621,13 @@ def var_est(n, p, y, A, z, w):
         treatment probability
     y : numpy array
         observations
-    A : numpy array 
+    A : scipy SPARSE matrix 
         adjacency matrix where (i,j)th entry = 1 iff j's treatment affects i's outcome
     z : numpy array
         realized treatment assignment vector
-    w : numpy array
-        weights w_i(z)
     '''
+    zz = z/p - (1-z)/(1-p)
+    w = A.dot(zz)
     YW = y * w
     YW_sq = np.square(YW)
 
@@ -638,18 +638,17 @@ def var_est(n, p, y, A, z, w):
     prob_p = np.power(np.ones(n)*p, z) 
     prob_1_minus_p = np.power(1 - np.ones(n)*p, 1 - z)
 
-    dep_neighbors = np.dot(A,A.T)
+    dep_neighbors = A.dot(A.transpose())
     
     for i in np.arange(n):
-        Ni = np.nonzero(A[[i],:])
-        Mi = np.nonzero(dep_neighbors[[i],:]) # dependency neighbor's indices
-        Mi = Mi[1]
+        Ni = np.nonzero(A[[i],:])[1]
+        Mi = np.nonzero(dep_neighbors[[i],:])[1] # dependency neighbor's indices
 
         Pi = np.zeros(len(Mi))
         COVi = np.zeros(len(Mi))
         sum = 0
         for j in np.arange(len(Mi)):
-            Nj = np.nonzero(A[[Mi[j]], :])
+            Nj = np.nonzero(A[[Mi[j]], :])[1]
             Ni_or_Nj = np.union1d(Ni,Nj)
 
             # Compute Pi
@@ -673,8 +672,8 @@ def var_est(n, p, y, A, z, w):
         V[i] = np.sum(1/Pi * YW[Mi] * COVi)
 
         # Compute PY2W2
-        mult_p = prob_p[Ni[1]]
-        mult_1_minus_p = prob_1_minus_p[Ni[1]]
+        mult_p = prob_p[Ni]
+        mult_1_minus_p = prob_1_minus_p[Ni]
         PY2W2[i] = np.prod(mult_p) * np.prod(mult_1_minus_p) * YW_sq[i]
 
         # Compute CNTS
