@@ -26,8 +26,8 @@ def main(argv):
     else:
         beta = 2
 
-    G = 1          # number of graphs we want to average over (10)
-    T = 1          # number of trials per graph (500)
+    G = 10          # number of graphs we want to average over (10)
+    T = 100          # number of trials per graph (100)
 
     graphStr = "er"
 
@@ -52,7 +52,7 @@ def main(argv):
         if graphStr == "sw":
             sizes = np.array([16, 24, 32, 48, 64, 96])
         else:
-            sizes = np.array([5000, 10000, 15000, 20000, 25000])
+            sizes = np.array([2500, 5000, 7500, 10000, 12500])
 
         for n in sizes:
             print("n = {}".format(n))
@@ -66,7 +66,7 @@ def main(argv):
 
         executionTime = (time.time() - startTime1)
         print('Runtime (size experiment) in minutes: {}'.format(executionTime/60),file=f)  
-        print('Runtime (size experiment) in minutes: {}'.format(executionTime/60))       
+        print('Runtime (size experiment) in minutes: {}\n'.format(executionTime/60))       
         df = pd.DataFrame.from_records(results)
         df.to_csv(save_path+graphStr+'-size-deg'+str(beta)+'-SNIPE_var_est.csv')
 
@@ -77,12 +77,12 @@ def main(argv):
         if graphStr == "sw":
             n = 96
         else:
-            n = 15000   # number of nodes in network
+            n = 7500   # number of nodes in network
         diag = 10       # maximum norm of direct effect
         r = 2           # ratio between indirect and direct effects
 
         results = []
-        p_treatments = np.array([0.03, 0.06, 0.09, 0.12, 0.15, 0.20, 0.25, 0.30, 0.40, 0.50]) # treatment probabilities
+        p_treatments = np.array([0.03, 0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.40, 0.50]) # treatment probabilities
 
         for p in p_treatments:
             print("Treatment Probability: {}".format(p))
@@ -96,7 +96,7 @@ def main(argv):
 
         executionTime = (time.time() - startTime2)
         print('Runtime (tp experiment) in minutes: {}'.format(executionTime/60),file=f)  
-        print('Runtime (tp experiment) in minutes: {}'.format(executionTime/60))           
+        print('Runtime (tp experiment) in minutes: {}\n'.format(executionTime/60))           
         df = pd.DataFrame.from_records(results)
         df.to_csv(save_path+graphStr+'-tp-deg'+str(beta)+'-SNIPE_var_est.csv')
 
@@ -107,12 +107,12 @@ def main(argv):
         if graphStr == "sw":
             n = 96
         else:
-            n = 15000       # number of nodes in network
+            n = 7500       # number of nodes in network
         p = 0.2             # treatment probability
         diag = 10           # maximum norm of direct effect
 
         results = []
-        ratio = [0.01, 0.1, 0.25,0.5,0.75,1,1/0.75,1/0.5,3,1/0.25]
+        ratio = [0.1, 0.25,0.5,0.75,1,1/0.75,1/0.5,3]
 
         for r in ratio:
             print('ratio: {}'.format(r))
@@ -126,7 +126,7 @@ def main(argv):
 
         executionTime = (time.time() - startTime2)
         print('Runtime (ratio experiment) in minutes: {}'.format(executionTime/60),file=f)   
-        print('Runtime (ratio experiment) in minutes: {}'.format(executionTime/60))           
+        print('Runtime (ratio experiment) in minutes: {}\n'.format(executionTime/60))           
         df = pd.DataFrame.from_records(results)
         df.to_csv(save_path+graphStr+'-ratio-deg'+str(beta)+'-SNIPE_var_est.csv')
 
