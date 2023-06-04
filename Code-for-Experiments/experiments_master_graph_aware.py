@@ -26,7 +26,7 @@ def main(argv):
         beta = 2
 
     G = 10          # number of graphs we want to average over (10)
-    T = 100          # number of trials per graph (500)
+    T = 500          # number of trials per graph (500)
 
     graphStr = "er"
 
@@ -65,7 +65,7 @@ def main(argv):
 
         executionTime = (time.time() - startTime1)
         print('Runtime (size experiment) in minutes: {}'.format(executionTime/60),file=f)  
-        print('Runtime (size experiment) in minutes: {}'.format(executionTime/60))       
+        print('Runtime (size experiment) in minutes: {}\n'.format(executionTime/60))       
         df = pd.DataFrame.from_records(results)
         df.to_csv(save_path+graphStr+'-size-deg'+str(beta)+'-SNIPE.csv')
 
@@ -95,7 +95,7 @@ def main(argv):
 
         executionTime = (time.time() - startTime2)
         print('Runtime (tp experiment) in minutes: {}'.format(executionTime/60),file=f)  
-        print('Runtime (tp experiment) in minutes: {}'.format(executionTime/60))           
+        print('Runtime (tp experiment) in minutes: {}\n'.format(executionTime/60))           
         df = pd.DataFrame.from_records(results)
         df.to_csv(save_path+graphStr+'-tp-deg'+str(beta)+'-SNIPE.csv')
 
@@ -125,7 +125,7 @@ def main(argv):
 
         executionTime = (time.time() - startTime2)
         print('Runtime (ratio experiment) in minutes: {}'.format(executionTime/60),file=f)   
-        print('Runtime (ratio experiment) in minutes: {}'.format(executionTime/60))           
+        print('Runtime (ratio experiment) in minutes: {}\n'.format(executionTime/60))           
         df = pd.DataFrame.from_records(results)
         df.to_csv(save_path+graphStr+'-ratio-deg'+str(beta)+'-SNIPE.csv')
 
@@ -212,6 +212,10 @@ def run_experiment(G,T,n,p,r,graphStr,diag=1,beta=2,loadGraphs=False):
 
         alg_names = ['SNIPE('+str(beta)+')', 'LS-Prop', 'LS-Num', 'DM', 'DM($0.75$)']
 
+        N = [np.nonzero(A[[i],:])[1] for i in range(n)]  # neighbors
+        dep_neighbors = A.dot(A.transpose())
+        M = [np.nonzero(dep_neighbors[[i],:])[1] for i in range(n)] # dependencies
+
         for i in range(T):
             dict_base.update({'rep':i, 'Rand': 'Bernoulli'})
             z = ncls.bernoulli(n,p)
@@ -222,7 +226,7 @@ def run_experiment(G,T,n,p,r,graphStr,diag=1,beta=2,loadGraphs=False):
             else:
                 w = ncps.SNIPE_weights(n, p, A, z, beta)
 
-            var_est_snipe = ncls.var_est(n, p, y, A, z, w)
+            var_est_snipe = ncls.var_est(n, p, y, A, z, N, M)
             dict_base.update({'Variance_Estimate_SNIPE': var_est_snipe})
 
             for ind in range(len(estimators)):
