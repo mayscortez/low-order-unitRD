@@ -613,7 +613,7 @@ def var_bound(n, p, A, C, alp, beta=1):
     bound = (1/n) * d_in * d_out * (Ymax**2) * (np.exp(1) * d_in * temp)**beta * (1/beta)**beta
     return bound
 
-def var_est(n, p, y, A, z, w):
+def var_est(n, p, y, A, z, N, M):  
     '''
     n : int
         size of the population
@@ -625,69 +625,30 @@ def var_est(n, p, y, A, z, w):
         adjacency matrix where (i,j)th entry = 1 iff j's treatment affects i's outcome
     z : numpy array
         realized treatment assignment vector
-    w : numpy array
-        SNIPE estimator weights w_i(z)
-    '''
-    YW = y * w
-    YW_sq = np.square(YW)
+    N : numpy array
+        network neighbors e.g. N = [np.nonzero(A[[i],:])[1] for i in range(n)]
+    M : numpy array
+        dependency neighborhoods e.g. M = [np.nonzero(dep_neighbors[[i],:])[1] for i in range(n)] with dep_neighbors = A.dot(A.transpose())
+    '''  
+    YW = y * A.dot(z-p)/(p*(1-p))
 
-    V = np.zeros(n)
-    PY2W2 = np.zeros(n)
-    CNTS = np.zeros(n)
+    P = np.power(np.ones(n)*p, z) + np.power(1 - np.ones(n)*p, 1 - z) - 1    # assignment probabilities
+    lP = np.log(P)     # log of assignment probabilities
 
-    prob_p = np.power(np.ones(n)*p, z) 
-    prob_1_minus_p = np.power(1 - np.ones(n)*p, 1 - z)
+    PY2W2 = np.exp(A.dot(lP)) * YW**2 
 
-    dep_neighbors = A.dot(A.transpose())
-    
-    for i in np.arange(n):
-        Ni = np.nonzero(A[[i],:])[1]
-        Mi = np.nonzero(dep_neighbors[[i],:])[1] # dependency neighbor's indices
+    T1,T2 = 0,0
+    for i in range(n):
+        T1 += YW[i] * YW[M[i]].dot(1 - np.exp((A[[i],:]*A[M[i],:]).dot(lP)))
+        T2 += PY2W2[i] * sum([2**len(N[j]) - 2**len(np.setdiff1d(N[j],N[i])) for j in M[i]])
 
-        Pi = np.zeros(len(Mi))
-        COVi = np.zeros(len(Mi))
-        sum = 0
-        for j in np.arange(len(Mi)):
-            Nj = np.nonzero(A[[Mi[j]], :])[1]
-            Ni_or_Nj = np.union1d(Ni,Nj)
-
-            # Compute Pi
-            mult_p = prob_p[Ni_or_Nj]
-            mult_1_minus_p = prob_1_minus_p[Ni_or_Nj]
-            Pi[j] = np.prod(mult_p) * np.prod(mult_1_minus_p)
-
-            # Compute COVi
-            Ni_and_Nj = np.intersect1d(Ni,Nj)
-            mult_p = prob_p[Ni_and_Nj]
-            mult_1_minus_p = prob_1_minus_p[Ni_and_Nj]
-            temp = np.prod(mult_p) * np.prod(mult_1_minus_p)
-            COVi[j] = Pi[j] * (1 - temp)
-
-            # Compute CNTS[i]
-            Nj_minus_Ni = np.setdiff1d(Nj,Ni)
-            sum = sum + (2**len(Nj) - 2**len(Nj_minus_Ni))
-
-
-        # Compute V
-        V[i] = np.sum(1/Pi * YW[Mi] * COVi)
-
-        # Compute PY2W2
-        mult_p = prob_p[Ni]
-        mult_1_minus_p = prob_1_minus_p[Ni]
-        PY2W2[i] = np.prod(mult_p) * np.prod(mult_1_minus_p) * YW_sq[i]
-
-        # Compute CNTS
-        CNTS[i] = sum
-    
-    term1 = (1/n**2) * np.dot(YW, V)
-    term2 = (1/n**2) * np.dot(PY2W2, CNTS)
-    return term1+term2
+    return (T1+T2)/n**2
 
 ########################################
 # Estimators
 ########################################
 
-def SNIPE_deg1(n, p, y, A, z):
+def SNIPE_deg1(n, y, w):
     '''
     Returns an estimate of the TTE using SNIPE(beta)
 
@@ -697,8 +658,7 @@ def SNIPE_deg1(n, p, y, A, z):
     A (square numpy array): network adjacency matrix
     z (numpy array): treatment vector
     '''
-    zz = z/p - (1-z)/(1-p)
-    return 1/n * y.dot(A.dot(zz))
+    return 1/n * y.dot(w)
 
 def est_us_clusters(n, p, y, A, z, clusters=np.array([])):
     '''
