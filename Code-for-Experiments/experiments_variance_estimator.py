@@ -17,7 +17,7 @@ import nci_polynomial_setup as ncps
 
 path_to_module = 'Code-for-Experiments/'
 #save_path = 'outputFiles/new/'
-save_path = 'outputFiles/graph_aware/'
+save_path = 'outputFiles/variance_experiments/'
 save_path_graphs = 'graphs/'
 
 def main(argv):
@@ -26,8 +26,8 @@ def main(argv):
     else:
         beta = 2
 
-    G = 10          # number of graphs we want to average over (10)
-    T = 100          # number of trials per graph (500)
+    G = 1          # number of graphs we want to average over (10)
+    T = 1          # number of trials per graph (500)
 
     graphStr = "er"
 
@@ -38,7 +38,7 @@ def main(argv):
 
     for beta in [1]:
 
-        f = open(save_path+'experiments_output_deg'+str(beta)+'_SNIPE.txt', 'w')
+        f = open(save_path+'experiments_output_deg'+str(beta)+'_SNIPE_var_est.txt', 'w')
         startTime1 = time.time()
 
         ###########################################
@@ -68,7 +68,7 @@ def main(argv):
         print('Runtime (size experiment) in minutes: {}'.format(executionTime/60),file=f)  
         print('Runtime (size experiment) in minutes: {}'.format(executionTime/60))       
         df = pd.DataFrame.from_records(results)
-        df.to_csv(save_path+graphStr+'-size-deg'+str(beta)+'-SNIPE.csv')
+        df.to_csv(save_path+graphStr+'-size-deg'+str(beta)+'-SNIPE_var_est.csv')
 
         ################################################
         # Run Experiment: Varying Treatment Probability 
@@ -98,7 +98,7 @@ def main(argv):
         print('Runtime (tp experiment) in minutes: {}'.format(executionTime/60),file=f)  
         print('Runtime (tp experiment) in minutes: {}'.format(executionTime/60))           
         df = pd.DataFrame.from_records(results)
-        df.to_csv(save_path+graphStr+'-tp-deg'+str(beta)+'-SNIPE.csv')
+        df.to_csv(save_path+graphStr+'-tp-deg'+str(beta)+'-SNIPE_var_est.csv')
 
         ###########################################################
         # Run Experiment: Varying Ratio of Indirect & Direct Effects 
@@ -128,7 +128,7 @@ def main(argv):
         print('Runtime (ratio experiment) in minutes: {}'.format(executionTime/60),file=f)   
         print('Runtime (ratio experiment) in minutes: {}'.format(executionTime/60))           
         df = pd.DataFrame.from_records(results)
-        df.to_csv(save_path+graphStr+'-ratio-deg'+str(beta)+'-SNIPE.csv')
+        df.to_csv(save_path+graphStr+'-ratio-deg'+str(beta)+'-SNIPE_var_est.csv')
 
         executionTime = (time.time() - startTime1)
         print('Runtime (whole script) in minutes: {}'.format(executionTime/60),file=f)
@@ -199,19 +199,15 @@ def run_experiment(G,T,n,p,r,graphStr,diag=1,beta=2,loadGraphs=False):
         ####### Estimate ########
         estimators = []
         if beta == 1:
-            estimators.append(lambda y,z,w: ncls.SNIPE_deg1(n, p, y, A, z))
+            estimators.append(lambda y,w: ncls.SNIPE_deg1(n,y,w))
         else:
-            estimators.append(lambda y,z,w: ncps.SNIPE_beta(n,y,w))
-        if beta == 1:
-            estimators.append(lambda y,z,w: ncls.est_ols_gen(y,A,z))
-            estimators.append(lambda y,z,w: ncls.est_ols_treated(y,A,z))
-        else:
-            estimators.append(lambda y,z,w: ncps.poly_regression_prop(beta, y, A, z))
-            estimators.append(lambda y,z,w: ncps.poly_regression_num(beta, y, A, z))
-        estimators.append(lambda y,z,w: ncls.diff_in_means_naive(y,z))
-        estimators.append(lambda y,z,w: ncls.diff_in_means_fraction(n,y,A,z,0.75))
+            estimators.append(lambda y,w: ncps.SNIPE_beta(n,y,w))
 
-        alg_names = ['SNIPE('+str(beta)+')', 'LS-Prop', 'LS-Num', 'DM', 'DM($0.75$)']
+        alg_names = ['SNIPE('+str(beta)+')']
+
+        N = [np.nonzero(A[[i],:])[1] for i in range(n)]  # neighbors
+        dep_neighbors = A.dot(A.transpose())
+        M = [np.nonzero(dep_neighbors[[i],:])[1] for i in range(n)] # dependencies
 
         for i in range(T):
             dict_base.update({'rep':i, 'Rand': 'Bernoulli'})
@@ -223,11 +219,11 @@ def run_experiment(G,T,n,p,r,graphStr,diag=1,beta=2,loadGraphs=False):
             else:
                 w = ncps.SNIPE_weights(n, p, A, z, beta)
 
-            var_est_snipe = ncls.var_est(n, p, y, A, z, w)
-            dict_base.update({'Variance_Estimate_SNIPE': var_est_snipe})
+            var_est_snipe = ncls.var_est(n, p, y, A, z, N, M)
+            dict_base.update({'Variance_Estimate': var_est_snipe})
 
             for ind in range(len(estimators)):
-                est = estimators[ind](y,z,w)
+                est = estimators[ind](y,w)
                 dict_base.update({'Estimator': alg_names[ind], 
                                   'TTE_Estimate': est,
                                   'Absolute_Bias': est-TTE,
